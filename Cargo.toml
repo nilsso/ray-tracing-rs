@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 progress = "0.2.0"
+nalgebra = "0.21.1"
