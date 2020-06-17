@@ -1,87 +1,70 @@
-#![allow(unused_imports, unused_variables)]
+#![feature(trait_alias)]
+// #![allow(unused_imports)]
+#![allow(unused_variables, dead_code)]
+// use std::fs::File;
 
-use std::convert::From;
-use std::fmt::Display;
-use std::fs::File;
-use std::path::Path;
-use std::{io, io::Write};
-
-mod vector;
+pub mod vector;
 use vector::Vec3;
 
+// pub mod color;
+// use color::Color;
 
-// trait AsColor {
-//     fn as_color(&self) -> String;
-// }
-//
-// impl<T: Scalar + Display> AsColor for Vector3<T> {
-//     fn as_color(&self) -> String {
-//         format!("{} {} {}", self.data[0], self.data[1], self.data[2])
-//     }
-// }
-//
-// struct Ray {
-//     pub origin: Point3<f64>,
-//     pub direction: Vector3<f64>,
-// }
-//
-// impl Ray {
-//     fn new(origin: [f64; 3], direction: [f64; 3]) -> Self {
-//         Self {
-//             origin: Point3::from(origin),
-//             direction: Vector3::from(direction),
-//         }
-//     }
-//
-//     fn at(&self, t: f64) -> Point3<f64> {
-//         &self.origin + &self.direction * t
-//     }
-//
-//     fn color(&self) -> Color {
-//         let t = 0.5 * (self.direction.normalize().data[1] + 1.0);
-//         (1.0 - t) * Vector3::identity() + t * Vector3::new(0.5, 0.7, 1.0)
-//     }
-// }
+// pub mod ray;
+// use ray::Ray;
 
-// fn write_ppm(path: &Path) -> io::Result<()> {
-//     let mut bar = progress::Bar::new();
-//     bar.set_job_title("Writing PPM image...");
-//     let mut file = File::create(path)?;
-//     let mut v = Vector3::<f32>::default();
-//
-//     file.write_fmt(format_args!("P3\n{} {}\n255\n", IMAGE_W, IMAGE_H))?;
-//     for j in 0..IMAGE_H {
-//         for i in 0..IMAGE_W {
-//             v.data[0] = i as f32 / (IMAGE_W - 1) as f32;
-//             v.data[1] = j as f32 / (IMAGE_H - 1) as f32;
-//             v.data[2] = 0.25;
-//             file.write_fmt(format_args!("{}\n", v.as_color()))?;
-//         }
-//         bar.reach_percent((100.0 * j as f32 / IMAGE_H as f32) as i32);
-//     }
-//     Ok(())
-// }
+// pub mod collide;
+// use collide::{Collidable, Collision, Cube, FindCollision, Sphere};
+
+// pub mod camera;
+// use camera::Camera;
 
 fn main() -> std::io::Result<()> {
+    let a = Vec3::new(1.0, 2.0, 3.0) / 2.0;
+    println!("{}", a);
+    println!("{}", a.length());
+
+    // let world: Vec<Box<dyn Collidable>> = vec![
+    //     Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5)),
+    //     Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0)),
+    //     // Box::new(Cube::new(Vec3::identity(), Vec3::zero())),
+    // ];
+
     // const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    // const IMAGE_W: u32 = 384;
+    // const IMAGE_W: u32 = {
+    //     225
+    //     // 450
+    //     // 900
+    // };
     // const IMAGE_H: u32 = (IMAGE_W as f64 / ASPECT_RATIO) as u32;
-    //
+
+    // let origin = Vec3::new(0.0, 0.0, 0.0);
     // let viewport_height = 2.0;
     // let viewport_width = ASPECT_RATIO * viewport_height;
     // let focal_length = 1.0;
+    // let samples_per_pixel = 4e1 as u32;
     //
-    // let origin = Point3::new(0.0, 0.0, 0.0);
-    // let horizontal = Vector3::new(viewport_width, 0.0, 0.0);
-    // let vertical = Vector3::new(0.0, viewport_height, 0.0);
-    // let lower_left_corner =
-    //     origin - horizontal / 2.0 - vertical / 2.0 - Vector3::new(0.0, 0.0, focal_length);
+    // let camera = Camera::new(origin, viewport_width, viewport_height, focal_length);
     //
-    // // write_ppm(Path::new("test.ppm"))?;
-    // let mut ray = Ray::new([0.0, 0.0, 0.0], [0.0, 0.0, 0.0]);
-    // ray.color().as_color();
-    // // let v = Unit::new_normalize(nalgebra::Vector2::new(1.0, 2.0)) ;
-    // // println!("{:?}", v);
-
+    // let mut file = File::create("test.ppm")?;
+    // file.write_fmt(format_args!("P3\n{} {}\n255\n", IMAGE_W, IMAGE_H))?;
+    // let mut bar = progress::Bar::new();
+    // for (i, y) in (0..IMAGE_H).rev().enumerate() {
+    //     for x in 0..IMAGE_W {
+    //         let mut pixel_color = Vec3::zero();
+    //         for _ in 0..samples_per_pixel {
+    //             let u = (x as f64 + rand::random::<f64>()) / (IMAGE_W - 1) as f64;
+    //             let v = (y as f64 + rand::random::<f64>()) / (IMAGE_H - 1) as f64;
+    //             let ray = camera.get_ray(u, v);
+    //             pixel_color += ray.color(world.find_intersection(&ray, 0.0, f64::INFINITY))
+    //         }
+    //         file.write_fmt(format_args!(
+    //             "{}\n",
+    //             Color::from(pixel_color / samples_per_pixel as f64)
+    //         ))?;
+    //     }
+    //     bar.reach_percent((100.0 * i as f64 / IMAGE_H as f64) as i32);
+    // }
+    // bar.reach_percent(100);
+    // bar.jobs_done();
     Ok(())
 }

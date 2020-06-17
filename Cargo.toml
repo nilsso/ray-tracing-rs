@@ -9,3 +9,6 @@ edition = "2018"
 [dependencies]
 progress = "0.2.0"
 nalgebra = "0.21.1"
+rand = "0.7.3"
+num-traits = "0.2.12"
+num = "0.3.0"
