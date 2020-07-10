@@ -49,15 +49,15 @@ fn main() -> Result<()> {
     const VIEWPORT_HEIGHT: f64 = 2.0;
     const VIEWPORT_WIDTH: f64 = ASPECT_RATIO * VIEWPORT_HEIGHT;
     const FOCAL_LENGTH: f64 = 1.0;
-    const SAMPLES_PER_PIXEL: u32 = 2u32.pow(6);
-    const MAX_DEPTH: u32 = 2u32.pow(4);
+    const SAMPLES_PER_PIXEL: u32 = 2u32.pow(7);
+    const MAX_DEPTH: u32 = 2u32.pow(7);
 
     let mut rng = rand::thread_rng();
 
     let lambert_a: Rc<dyn Material> = Rc::new(Lambert::new(Vec3::new(0.7, 0.3, 0.3)));
     let lambert_b: Rc<dyn Material> = Rc::new(Lambert::new(Vec3::new(0.8, 0.8, 0.0)));
-    let metal_a: Rc<dyn Material> = Rc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2)));
-    let metal_b: Rc<dyn Material> = Rc::new(Metal::new(Vec3::new(0.8, 0.8, 0.8)));
+    let metal_a: Rc<dyn Material> = Rc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.1));
+    let metal_b: Rc<dyn Material> = Rc::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.6));
 
     let big_sphere = Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, lambert_b.clone()));
     let diffuse_sphere = Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5, lambert_a.clone()));

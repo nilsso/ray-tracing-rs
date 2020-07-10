@@ -68,6 +68,11 @@ impl<T: PrimitiveField<T>> Vec3<T> {
         self - n * (d + d)
     }
 
+    pub fn refract(self, n: &Vec3<T>, etai_over_etat: T) {
+        let cos_theta = (-self).dot(n);
+        let r_out_parallel = (self + (*n) * cos_theta) * etai_over_etat;
+    }
+
     pub fn random_clamped(min: T, max: T) -> Self {
         let mut rng = rand::thread_rng();
         Self {
@@ -82,12 +87,19 @@ impl<T: PrimitiveField<T>> Vec3<T> {
     }
 
     pub fn random_in_unit_sphere() -> Self {
-        loop {
-            let p = Self::random_clamped(-T::one(), T::one());
-            if p.length_squared() >= T::one() {
-                return p;
-            }
-        }
+        // TODO: FIX THIS
+        let mut rng = rand::thread_rng();
+        let s: f64 = rng.gen_range(-1.0, 1.0);
+        let t: f64 = rng.gen_range(-1.0, 1.0);
+        let u: f64 = rng.gen_range(-1.0, 1.0);
+        let v: f64 = rng.gen_range(-1.0, 1.0);
+        let w: f64 = rng.gen_range(-1.0, 1.0);
+        let norm = T::from(Real::sqrt(s * s + t * t + u * u + v * v + w * v)).unwrap();
+        Self::new(
+            T::from(u).unwrap(),
+            T::from(v).unwrap(),
+            T::from(w).unwrap(),
+        ) / norm
     }
 
     pub fn random_normalized() -> Self {
