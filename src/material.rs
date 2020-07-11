@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use crate::{Collision, Ray, Vec3};
 
 pub trait Material {
@@ -55,6 +57,47 @@ impl Material for Metal {
             Some((scattered, self.albedo))
         } else {
             None
+        }
+    }
+}
+
+pub struct Dielectric {
+    pub refraction_index: f64,
+}
+
+impl Dielectric {
+    pub fn new(refraction_index: f64) -> Self {
+        Self { refraction_index }
+    }
+}
+
+fn schlick_approx(cosine: f64, refraction_index: f64) -> f64 {
+    let r0 = (1.0 - refraction_index) / (1.0 + refraction_index);
+    let r0 = r0 * r0;
+    r0 + (1.0 - r0) * (1.0 - cosine).powf(5.0)
+}
+
+impl Material for Dielectric {
+    fn scatter(&self, r_in: &Ray, collision: &Collision) -> Option<(Ray, Vec3<f64>)> {
+        let mut rng = rand::thread_rng();
+
+        let attenuation = Vec3::new(1.0, 1.0, 1.0);
+        let etai_over_etat = if collision.front_face {
+            1.0 / self.refraction_index
+        } else {
+            self.refraction_index
+        };
+        let unit_direction = r_in.direction.normalized();
+        let cos_theta = (-unit_direction).dot(&collision.normal).min(1.0);
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+        let reflected_prob = schlick_approx(cos_theta, etai_over_etat);
+
+        if etai_over_etat * sin_theta > 1.0 || rng.gen::<f64>() < reflected_prob {
+            let reflected = unit_direction.reflect(collision.normal);
+            Some((Ray::new(collision.p, reflected), attenuation))
+        } else {
+            let refracted = unit_direction.refract(collision.normal, etai_over_etat);
+            Some((Ray::new(collision.p, refracted), attenuation))
         }
     }
 }

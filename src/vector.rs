@@ -52,7 +52,7 @@ impl<T: PrimitiveField<T>> Vec3<T> {
     }
 
     pub fn length_squared(&self) -> T {
-        self.dot(&self)
+        self.dot(self)
     }
 
     pub fn length(&self) -> T {
@@ -68,9 +68,11 @@ impl<T: PrimitiveField<T>> Vec3<T> {
         self - n * (d + d)
     }
 
-    pub fn refract(self, n: &Vec3<T>, etai_over_etat: T) {
-        let cos_theta = (-self).dot(n);
-        let r_out_parallel = (self + (*n) * cos_theta) * etai_over_etat;
+    pub fn refract(self, n: Vec3<T>, etai_over_etat: T) -> Self {
+        let cos_theta = (-self).dot(&n);
+        let r_out_parallel = (self + n * cos_theta) * etai_over_etat;
+        let r_out_perpendicular = n * (-Real::sqrt(T::one() - r_out_parallel.length_squared()));
+        r_out_parallel + r_out_perpendicular
     }
 
     pub fn random_clamped(min: T, max: T) -> Self {
@@ -86,20 +88,40 @@ impl<T: PrimitiveField<T>> Vec3<T> {
         Self::random_clamped(T::zero(), T::one())
     }
 
-    pub fn random_in_unit_sphere() -> Self {
-        // TODO: FIX THIS
+    pub fn random_in_unit_disk() -> Self {
         let mut rng = rand::thread_rng();
-        let s: f64 = rng.gen_range(-1.0, 1.0);
-        let t: f64 = rng.gen_range(-1.0, 1.0);
-        let u: f64 = rng.gen_range(-1.0, 1.0);
-        let v: f64 = rng.gen_range(-1.0, 1.0);
-        let w: f64 = rng.gen_range(-1.0, 1.0);
-        let norm = T::from(Real::sqrt(s * s + t * t + u * u + v * v + w * v)).unwrap();
-        Self::new(
-            T::from(u).unwrap(),
-            T::from(v).unwrap(),
-            T::from(w).unwrap(),
-        ) / norm
+
+        loop {
+            let p = Self::new(
+                T::from(rng.gen_range(-1.0, 1.0)).unwrap(),
+                T::from(rng.gen_range(-1.0, 1.0)).unwrap(),
+                T::zero());
+            if p.length_squared() <= T::one() {
+                return p;
+            }
+        }
+
+        // let u = rng.gen::<f64>();
+        // let v = rng.gen::<f64>();
+        // let r = Real::sqrt(u);
+        // let theta = 2.0 * std::f64::consts::PI * v;
+        // Self {
+        //     x: T::from(r * Real::cos(theta)).unwrap(),
+        //     y: T::from(r * Real::sin(theta)).unwrap(),
+        //     z: T::zero(),
+        // }
+    }
+
+    pub fn random_in_unit_sphere() -> Self {
+        let mut rng = rand::thread_rng();
+
+        let u = 2.0 * rng.gen::<f64>() - 1.0;
+        let phi = 2.0 * std::f64::consts::PI * rng.gen::<f64>();
+        let r = Real::powf(rng.gen::<f64>(), 1.0 / 3.0);
+        let x = T::from(r * Real::cos(phi) * Real::sqrt(1.0 - u * u)).unwrap();
+        let y = T::from(r * Real::sin(phi) * Real::sqrt(1.0 - u * u)).unwrap();
+        let z = T::from(r * u).unwrap();
+        Self { x, y, z }
     }
 
     pub fn random_normalized() -> Self {

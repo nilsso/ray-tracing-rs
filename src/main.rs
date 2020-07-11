@@ -1,6 +1,7 @@
 #![feature(trait_alias, const_int_pow, total_cmp)]
 // #![allow(unused_imports)]
-#![allow(unused_variables, dead_code)]
+#![allow(unused_variables)]
+#![allow(dead_code)]
 
 use std::fmt::Write as FmtWrite;
 use std::fs::File;
@@ -28,11 +29,6 @@ pub mod material;
 use material::*;
 
 fn main() -> Result<()> {
-    const ORIGIN: Vec3<f64> = Vec3 {
-        x: 0.0,
-        y: 0.0,
-        z: 0.0,
-    };
     const SKY: Vec3<f64> = Vec3 {
         x: 0.5,
         y: 0.7,
@@ -46,32 +42,67 @@ fn main() -> Result<()> {
         900
     };
     const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as u32;
-    const VIEWPORT_HEIGHT: f64 = 2.0;
-    const VIEWPORT_WIDTH: f64 = ASPECT_RATIO * VIEWPORT_HEIGHT;
-    const FOCAL_LENGTH: f64 = 1.0;
-    const SAMPLES_PER_PIXEL: u32 = 2u32.pow(7);
-    const MAX_DEPTH: u32 = 2u32.pow(7);
+
+    const LOOK_FROM: Vec3<f64> = Vec3 { x: -3.0, y: 1.0, z: 2.0 };
+    const LOOK_AT: Vec3<f64> = Vec3 { x: 0.0, y: 0.0, z: -1.0 };
+    const UP: Vec3<f64> = Vec3 { x: 0.0, y: 1.0, z: 0.0 };
+    const APERTURE: f64 = 0.7;
+
+    const SAMPLES_PER_PIXEL: u32 = 2u32.pow(8);
+    const MAX_DEPTH: u32 = 2u32.pow(8);
+
+    let dist_to_focus: f64 = (LOOK_FROM - LOOK_AT).length();
 
     let mut rng = rand::thread_rng();
 
-    let lambert_a: Rc<dyn Material> = Rc::new(Lambert::new(Vec3::new(0.7, 0.3, 0.3)));
-    let lambert_b: Rc<dyn Material> = Rc::new(Lambert::new(Vec3::new(0.8, 0.8, 0.0)));
-    let metal_a: Rc<dyn Material> = Rc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.1));
-    let metal_b: Rc<dyn Material> = Rc::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.6));
-
-    let big_sphere = Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, lambert_b.clone()));
-    let diffuse_sphere = Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5, lambert_a.clone()));
-    let metal_sphere_a = Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, metal_a.clone()));
-    let metal_sphere_b = Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, metal_b.clone()));
+    let material_lambert_huge = Rc::new(Lambert::new(Vec3::new(0.8, 0.8, 0.0)));
+    let material_lambert = Rc::new(Lambert::new(Vec3::new(0.1, 0.2, 0.5)));
+    let material_metal = Rc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.0));
+    let material_dielectric = Rc::new(Dielectric::new(1.5));
 
     let world: Vec<Box<dyn Collidable>> = vec![
-        diffuse_sphere,
-        big_sphere,
-        metal_sphere_a,
-        metal_sphere_b,
+        // Huge sphere
+        Box::new(Sphere::new(
+            Vec3::new(0.0, -100.5, -1.0),
+            100.0,
+            material_lambert_huge.clone(),
+        )),
+        // Middle lambert sphere
+        Box::new(Sphere::new(
+            Vec3::new(0.0, 0.0, -1.0),
+            0.5,
+            material_lambert.clone(),
+        )),
+        // Right metal sphere
+        Box::new(Sphere::new(
+            Vec3::new(1.0, 0.0, -1.0),
+            0.5,
+            material_metal.clone(),
+        )),
+        // Left glass sphere
+        Box::new(Sphere::new(
+            Vec3::new(-1.0, 0.0, -1.0),
+            0.5,
+            material_dielectric.clone(),
+        )),
+        // Left glass sphere (interior)
+        Box::new(Sphere::new(
+            Vec3::new(-1.0, 0.0, -1.0),
+            -0.45,
+            material_dielectric.clone(),
+        )),
     ];
 
-    let camera = Camera::new(ORIGIN, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, FOCAL_LENGTH);
+    let camera = Camera::new(
+        LOOK_FROM,
+        LOOK_AT,
+        UP,
+        20.0,
+        ASPECT_RATIO,
+        APERTURE,
+        dist_to_focus,
+    );
+
     let mut out_string = format_args!("P3\n{} {}\n255\n", IMAGE_WIDTH, IMAGE_HEIGHT).to_string();
 
     let mut bar = progress::Bar::new();

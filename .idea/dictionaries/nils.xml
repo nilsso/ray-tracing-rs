@@ -5,6 +5,7 @@
       <w>collidables</w>
       <w>hadamard</w>
       <w>intersectable</w>
+      <w>schlick</w>
     </words>
   </dictionary>
 </component>
