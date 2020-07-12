@@ -1,6 +1,7 @@
+//! Basic color printing utility.
 use std::fmt::{Display, Formatter};
 
-use crate::vector::{PrimitiveField, Vec3};
+use crate::vector::Vec3;
 
 pub struct Color {
     pub r: u32,
@@ -26,12 +27,12 @@ impl Display for Color {
     }
 }
 
-impl<T: PrimitiveField<T>> From<Vec3<T>> for Color {
-    fn from(other: Vec3<T>) -> Self {
+impl From<Vec3> for Color {
+    fn from(other: Vec3) -> Self {
         Self::new(
-            other.x.to_f64().unwrap(),
-            other.y.to_f64().unwrap(),
-            other.z.to_f64().unwrap(),
+            other.x,
+            other.y,
+            other.z,
         )
     }
 }

@@ -1,41 +1,53 @@
-// use std::convert::{From, Into};
+//! Simple three coordinate vector implementation.
+//!
+//! Operator overloads handled by the extremely convenient
+//! [auto_ops](https://docs.rs/auto_ops/0.1.0/auto_ops/index.html) crate.
 use std::fmt::{Display, Formatter, Result};
-use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 
-use num::traits::{real::Real, Inv, NumCast, One, Zero};
-use rand::{distributions::uniform::SampleUniform, Rng};
+use auto_ops::{impl_op_ex, impl_op_ex_commutative};
+use rand::Rng;
 
-// Conceptual trait alias
-pub trait Field<T> = One + Zero + Inv<Output = T> + Real;
-
-// Practical trait alias
-pub trait PrimitiveField<T> = Copy + Clone + NumCast + SampleUniform + Field<T>;
-
-#[derive(Copy, Clone, Debug)]
-pub struct Vec3<T> {
-    pub x: T,
-    pub y: T,
-    pub z: T,
+/// Axis enumeration.
+pub enum Axis {
+    X,
+    Y,
+    Z,
 }
 
-impl<T: PrimitiveField<T>> Vec3<T> {
-    pub fn new(x: T, y: T, z: T) -> Self {
+/// Simple three coordinate vector.
+///
+/// Originally generalized to work with any primitive numeric field type,
+/// but cut down to just `f64` to be more practical.
+#[derive(Copy, Clone, Debug)]
+pub struct Vec3 {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+impl Vec3 {
+    /// Construct a new vector.
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
+    /// Construct a zero vector.
     pub fn zero() -> Self {
-        Self::new(T::zero(), T::zero(), T::zero())
+        Self::new(0.0, 0.0, 0.0)
     }
 
+    /// Construct a one vector.
     pub fn one() -> Self {
-        Self::new(T::one(), T::one(), T::one())
+        Self::new(1.0, 1.0, 1.0)
     }
 
-    pub fn dot(&self, rhs: &Self) -> T {
+    /// Vector dot product with another vector.
+    pub fn dot(&self, rhs: &Self) -> f64 {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
     }
 
-    pub fn hadamard(&self, rhs: &Self) -> Self {
+    /// Element-wise (Hadamard) product with another vector.
+    pub fn hadamard_product(&self, rhs: &Self) -> Self {
         Self {
             x: self.x * rhs.x,
             y: self.y * rhs.y,
@@ -43,6 +55,7 @@ impl<T: PrimitiveField<T>> Vec3<T> {
         }
     }
 
+    /// Cross product operation with another vector.
     pub fn cross(&self, rhs: &Self) -> Self {
         Self {
             x: self.y * rhs.z - self.z * rhs.y,
@@ -51,84 +64,93 @@ impl<T: PrimitiveField<T>> Vec3<T> {
         }
     }
 
-    pub fn length_squared(&self) -> T {
+    /// The magnitude of the vector squared.
+    pub fn magnitude_squared(&self) -> f64 {
         self.dot(self)
     }
 
-    pub fn length(&self) -> T {
-        self.length_squared().sqrt()
+    /// The magnitude of the vector.
+    pub fn magnitude(&self) -> f64 {
+        self.magnitude_squared().sqrt()
     }
 
+    /// Convert the vector to a unit vector (normalization).
     pub fn normalized(self) -> Self {
-        self / self.length()
+        self / self.magnitude()
     }
 
+    /// Reflect the vector via a surface normal vector.
+    ///
+    /// ([source](https://raytracing.github.io/books/RayTracingInOneWeekend.html#metal/mirroredlightreflection))
     pub fn reflect(self, n: Self) -> Self {
-        let d = self.dot(&n);
-        self - n * (d + d)
+        self - n * 2.0 * self.dot(&n)
     }
 
-    pub fn refract(self, n: Vec3<T>, etai_over_etat: T) -> Self {
+    /// Refract the vector via a surface normal vector and refractive index quotient.
+    ///
+    /// ([source](https://raytracing.github.io/books/RayTracingInOneWeekend.html#dielectrics/snell'slaw))
+    pub fn refract(self, n: Self, etai_over_etat: f64) -> Self {
         let cos_theta = (-self).dot(&n);
         let r_out_parallel = (self + n * cos_theta) * etai_over_etat;
-        let r_out_perpendicular = n * (-Real::sqrt(T::one() - r_out_parallel.length_squared()));
+        let r_out_perpendicular = n * -(1.0 - r_out_parallel.magnitude_squared()).sqrt();
         r_out_parallel + r_out_perpendicular
     }
 
-    pub fn random_clamped(min: T, max: T) -> Self {
+    /// Randomized vector with components in the range [min, max).
+    pub fn random_clamped(min: f64, max: f64) -> Self {
         let mut rng = rand::thread_rng();
         Self {
-            x: rng.gen_range(min, max) as T,
-            y: T::zero(),
-            z: T::zero(),
+            x: rng.gen_range(min, max),
+            y: rng.gen_range(min, max),
+            z: rng.gen_range(min, max),
         }
     }
 
+    /// Randomized vector with components in the range [0.0, 1.0).
     pub fn random() -> Self {
-        Self::random_clamped(T::zero(), T::one())
+        Self::random_clamped(0.0, 1.0)
     }
 
-    pub fn random_in_unit_disk() -> Self {
+    /// Randomized vector with components within a unit disk.
+    ///
+    /// * `axis` - Denotes the axis normal to unit disk.
+    /// (e.g. X normal to the Y-Z plane, components will be in Y-Z unit disk).
+    pub fn random_in_unit_disk(axis_normal: Axis) -> Self {
         let mut rng = rand::thread_rng();
+        loop {
+            let a = rng.gen_range(-1.0, 1.0);
+            let b = rng.gen_range(-1.0, 1.0);
+            if a * a + b * b <= 1.0 {
+                return match axis_normal {
+                    Axis::X => Self::new(0.0, a, b),
+                    Axis::Y => Self::new(a, 0.0, b),
+                    Axis::Z => Self::new(a, b, 0.0),
+                };
+            }
+        }
+    }
 
+    /// Randomized vector with components within the unit sphere.
+    pub fn random_in_unit_sphere() -> Self {
+        let mut rng = rand::thread_rng();
         loop {
             let p = Self::new(
-                T::from(rng.gen_range(-1.0, 1.0)).unwrap(),
-                T::from(rng.gen_range(-1.0, 1.0)).unwrap(),
-                T::zero());
-            if p.length_squared() <= T::one() {
+                rng.gen_range(-1.0, 1.0),
+                rng.gen_range(-1.0, 1.0),
+                rng.gen_range(-1.0, 1.0),
+            );
+            if p.magnitude_squared() <= 1.0 {
                 return p;
             }
         }
-
-        // let u = rng.gen::<f64>();
-        // let v = rng.gen::<f64>();
-        // let r = Real::sqrt(u);
-        // let theta = 2.0 * std::f64::consts::PI * v;
-        // Self {
-        //     x: T::from(r * Real::cos(theta)).unwrap(),
-        //     y: T::from(r * Real::sin(theta)).unwrap(),
-        //     z: T::zero(),
-        // }
     }
 
-    pub fn random_in_unit_sphere() -> Self {
+    /// Randomized vector with components on the unit sphere.
+    pub fn random_unit_vector() -> Self {
         let mut rng = rand::thread_rng();
-
-        let u = 2.0 * rng.gen::<f64>() - 1.0;
-        let phi = 2.0 * std::f64::consts::PI * rng.gen::<f64>();
-        let r = Real::powf(rng.gen::<f64>(), 1.0 / 3.0);
-        let x = T::from(r * Real::cos(phi) * Real::sqrt(1.0 - u * u)).unwrap();
-        let y = T::from(r * Real::sin(phi) * Real::sqrt(1.0 - u * u)).unwrap();
-        let z = T::from(r * u).unwrap();
-        Self { x, y, z }
-    }
-
-    pub fn random_normalized() -> Self {
-        let mut rng = rand::thread_rng();
-        let a = T::from(rng.gen_range(0.0, 2.0 * std::f64::consts::PI)).unwrap();
-        let z = T::from(rng.gen_range(-1.0, 1.0)).unwrap();
-        let r = (T::one() - z * z).sqrt();
+        let a: f64 = rng.gen_range(0.0, 2.0 * std::f64::consts::PI);
+        let z: f64 = rng.gen_range(-1.0, 1.0);
+        let r = (1.0 - z * z).sqrt();
         Self {
             x: r * a.cos(),
             y: r * a.sin(),
@@ -136,9 +158,10 @@ impl<T: PrimitiveField<T>> Vec3<T> {
         }
     }
 
-    pub fn random_in_hemisphere(normal: &Vec3<T>) -> Self {
+    /// Randomized vector with components in the same hemisphere as some normal vector.
+    pub fn random_in_hemisphere(normal: &Vec3) -> Self {
         let in_unit_sphere = Self::random_in_unit_sphere();
-        if in_unit_sphere.dot(normal) > T::zero() {
+        if in_unit_sphere.dot(normal) > 0.0 {
             in_unit_sphere
         } else {
             -in_unit_sphere
@@ -146,96 +169,62 @@ impl<T: PrimitiveField<T>> Vec3<T> {
     }
 }
 
-/// Additive inverse (unary negation operator)
-impl<T: PrimitiveField<T>> Neg for Vec3<T> {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        Self {
-            x: -self.x,
-            y: -self.y,
-            z: -self.z,
-        }
+// Additive inverse (unary negation operator).
+impl_op_ex!(- |a: &Vec3| -> Vec3 {
+    Vec3 {
+        x: -a.x,
+        y: -a.y,
+        z: -a.z,
     }
-}
+});
 
-/// Vector addition
-impl<T: PrimitiveField<T>> Add for Vec3<T> {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-            z: self.z + rhs.z,
-        }
+// Vector addition
+impl_op_ex!(+ |a: &Vec3, b: &Vec3| -> Vec3 {
+    Vec3 {
+        x: a.x + b.x,
+        y: a.y + b.y,
+        z: a.z + b.z,
     }
-}
+});
 
-/// Scalar addition
-impl<T: PrimitiveField<T>> Add<T> for Vec3<T> {
-    type Output = Self;
 
-    fn add(self, rhs: T) -> Self::Output {
-        self + Self::new(rhs, rhs, rhs)
+// Scalar addition
+impl_op_ex_commutative!(+ |a: &Vec3, b: &f64| -> Vec3 { a + Vec3::new(*b, *b, *b) });
+
+// Scalar multiplication
+impl_op_ex_commutative!(*|a: &Vec3, b: &f64| -> Vec3 {
+    Vec3 {
+        x: a.x * b,
+        y: a.y * b,
+        z: a.z * b,
     }
-}
+});
 
-/// Scalar multiplication
-impl<T: PrimitiveField<T>> Mul<T> for Vec3<T> {
-    type Output = Self;
-
-    fn mul(self, rhs: T) -> Self::Output {
-        Self {
-            x: self.x * rhs,
-            y: self.y * rhs,
-            z: self.z * rhs,
-        }
+// Vector subtraction
+impl_op_ex!(-|a: &Vec3, b: &Vec3| -> Vec3 {
+    Vec3 {
+        x: a.x - b.x,
+        y: a.y - b.y,
+        z: a.z - b.z,
     }
-}
+});
 
-/// Vector subtraction
-impl<T: PrimitiveField<T>> Sub<Self> for Vec3<T> {
-    type Output = Self;
+// Scalar subtraction
+impl_op_ex_commutative!(-|a: &Vec3, b: &f64| -> Vec3 { a - Vec3::new(*b, *b, *b) });
 
-    fn sub(self, rhs: Self) -> Self::Output {
-        self + (-rhs)
-    }
-}
+// Scalar division.
+impl_op_ex_commutative!(/ |a: &Vec3, b: &f64| -> Vec3 { a * (1.0 / b) });
 
-/// Scalar subtraction
-impl<T: PrimitiveField<T>> Sub<T> for Vec3<T> {
-    type Output = Self;
+// Assignment operators.
+impl_op_ex!(+= |a: &mut Vec3, b: &Vec3| { *a = *a + b; });
+impl_op_ex!(+= |a: &mut Vec3, b: &f64 | { *a = *a + b; });
+impl_op_ex!(-= |a: &mut Vec3, b: &Vec3| { *a = *a - b; });
+impl_op_ex!(-= |a: &mut Vec3, b: &f64 | { *a = *a - b; });
+impl_op_ex!(*= |a: &mut Vec3, b: &f64 | { *a = *a * b; });
+impl_op_ex!(/= |a: &mut Vec3, b: &f64 | { *a = *a / b; });
 
-    fn sub(self, rhs: T) -> Self::Output {
-        self + (-rhs)
-    }
-}
-
-/// Scalar division
-impl<T: PrimitiveField<T>> Div<T> for Vec3<T> {
-    type Output = Self;
-
-    fn div(self, rhs: T) -> Self::Output {
-        self * rhs.inv()
-    }
-}
-
-/// Addition assignment
-impl<T: PrimitiveField<T>> AddAssign for Vec3<T> {
-    fn add_assign(&mut self, rhs: Self) {
-        *self = *self + rhs;
-    }
-}
-
-/// Addition assignment
-impl<T: PrimitiveField<T>> AddAssign<T> for Vec3<T> {
-    fn add_assign(&mut self, rhs: T) {
-        *self = *self + rhs;
-    }
-}
-
-impl<T: Display> Display for Vec3<T> {
+// Formatted display.
+impl Display for Vec3 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(f, "[ {} {} {} ]", self.x, self.y, self.z)
     }
